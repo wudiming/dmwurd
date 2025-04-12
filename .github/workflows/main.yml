@@ -47,22 +47,31 @@ jobs:
           cd rustdesk
           rm -rf libs/hbb_common/.git
 
-      - name: Modify config.rs using Python
+      - name: Modify config.rs using Python (Debug)
         run: |
           cd rustdesk/libs/hbb_common/src
           python3 - <<EOF
+          import re
           with open('config.rs', 'r') as f:
-              content = f.read()
-          content = content.replace(
-              'pub const RENDEZVOUS_SERVERS: [&str] = &["rs-ny.rustdesk.com"];',
-              'pub const RENDEZVOUS_SERVERS: [&str] = &["rd.1128.pp.ua"];'
+              original_content = f.read()
+          print("[DEBUG] Original content of config.rs:")
+          print(original_content)
+          modified_content = re.sub(
+              r'pub\s+const\s+RENDEZVOUS_SERVERS\s*:\s*\[&str\]\s*=\s*&\[\s*"rs-ny\.rustdesk\.com"\s*\];',
+              'pub const RENDEZVOUS_SERVERS: [&str] = &["rd.1128.pp.ua"];',
+              original_content,
+              flags=re.DOTALL
           )
-          content = content.replace(
-              'pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";',
-              'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";'
+          modified_content = re.sub(
+              r'pub\s+const\s+RS_PUB_KEY\s*:\s*&str\s*=\s*"OeVuKk5nlHiXp\+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw="\s*;',
+              'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";',
+              modified_content,
+              flags=re.DOTALL
           )
+          print("\n[DEBUG] Modified content of config.rs:")
+          print(modified_content)
           with open('config.rs', 'w') as f:
-              f.write(content)
+              f.write(modified_content)
           EOF
 
       - name: Modify common.rs using Python
