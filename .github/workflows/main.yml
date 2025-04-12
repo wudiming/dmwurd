@@ -1,146 +1,104 @@
 name: Modify and Build RustDesk
 
 on:
-  # 只允许手动触发工作流
   workflow_dispatch:
 
 jobs:
   modify-and-build:
-    runs-on: ubuntu-latest  # 设置工作流运行环境为最新的 Ubuntu
+    runs-on: ubuntu-latest
 
     steps:
-      # 1. 配置 Git 用户信息
       - name: Configure Git user info
         run: |
-          git config --global user.email "action@github.com"  # 配置 Git 用户电子邮件
-          git config --global user.name "GitHub Action"  # 配置 Git 用户名
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
 
-      # 2. 克隆 rustdesk 仓库并初始化子模块
       - name: Clone rustdesk repository and initialize submodules
         run: |
-          git clone --recurse-submodules https://github.com/rustdesk/rustdesk.git  # 克隆仓库并初始化子模块
-          cd rustdesk  # 进入项目目录
+          git clone --recurse-submodules https://github.com/rustdesk/rustdesk.git
+          cd rustdesk
 
-      # 3. 读取 .gitmodules 获取子模块信息
       - name: Read submodule information from .gitmodules
         id: submodule-info
         run: |
-          # 读取 .gitmodules 文件，提取子模块路径和 URL
           cd rustdesk
           SUBMODULE_PATH=$(git config -f .gitmodules --get submodule.libs/hbb_common.path)
           SUBMODULE_URL=$(git config -f .gitmodules --get submodule.libs/hbb_common.url)
-          echo "Submodule path: $SUBMODULE_PATH"
-          echo "Submodule URL: $SUBMODULE_URL"
           echo "::set-output name=submodule_path::$SUBMODULE_PATH"
           echo "::set-output name=submodule_url::$SUBMODULE_URL"
 
-      # 4. 解除子模块的关联并删除文件
       - name: Remove submodule reference and delete files
         run: |
-          cd rustdesk  # 确保在仓库目录内
-          # 获取从 .gitmodules 中提取的路径和 URL
+          cd rustdesk
           SUBMODULE_PATH=${{ steps.submodule-info.outputs.submodule_path }}
-          # 移除子模块的 Git 跟踪并删除文件夹
-          git submodule deinit -f $SUBMODULE_PATH  # 解除子模块的引用
-          git rm --cached $SUBMODULE_PATH  # 从 Git 索引中移除子模块，但保留本地文件
-          rm -rf $SUBMODULE_PATH  # 删除子模块的文件夹
+          git submodule deinit -f $SUBMODULE_PATH
+          git rm --cached $SUBMODULE_PATH
+          rm -rf $SUBMODULE_PATH
 
-      # 5. 根据 .gitmodules 信息克隆子模块文件
       - name: Clone submodule from URL
         run: |
-          cd rustdesk  # 确保在仓库目录内
-          # 获取子模块的 URL 和路径
+          cd rustdesk
           SUBMODULE_URL=${{ steps.submodule-info.outputs.submodule_url }}
           SUBMODULE_PATH=${{ steps.submodule-info.outputs.submodule_path }}
-          # 使用 URL 克隆子模块到指定路径
           git clone $SUBMODULE_URL $SUBMODULE_PATH
-          
-      # 6. 清理嵌套的 Git 仓库问题
+
       - name: Remove nested git repository if exists
         run: |
-          cd rustdesk  # 确保在仓库目录内
-          # 检查并删除 libs/hbb_common 中的 .git 目录（避免嵌套 git 仓库）
+          cd rustdesk
           rm -rf libs/hbb_common/.git
 
-    - name: Checkout repository with submodules
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Modify config.rs using Python
+        run: |
+          cd rustdesk/libs/hbb_common/src
+          python3 - <<EOF
+          with open('config.rs', 'r') as f:
+              content = f.read()
+          content = content.replace(
+              'pub const RENDEZVOUS_SERVERS: [&str] = &["rs-ny.rustdesk.com"];',
+              'pub const RENDEZVOUS_SERVERS: [&str] = &["rd.1128.pp.ua"];'
+          )
+          content = content.replace(
+              'pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";',
+              'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";'
+          )
+          with open('config.rs', 'w') as f:
+              f.write(content)
+          EOF
 
-    - name: Modify config.rs
-      run: |
-        python <<CODE
-        # 精确修改libs/hbb_common/src/config.rs
-        file_path = 'libs/hbb_common/src/config.rs'
-        new_lines = []
-        with open(file_path, 'r') as f:
-            for line in f:
-                if 'RENDEZVOUS_SERVERS' in line:
-                    line = 'pub const RENDEZVOUS_SERVERS: &[&str] = &["rd.1128.pp.ua"];\n'
-                elif 'RS_PUB_KEY' in line:
-                    line = 'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";\n'
-                new_lines.append(line)
-        with open(file_path, 'w') as f:
-            f.writelines(new_lines)
-        CODE
+      - name: Modify common.rs using Python
+        run: |
+          cd rustdesk/src
+          python3 - <<EOF
+          with open('common.rs', 'r') as f:
+              content = f.read()
+          content = content.replace(
+              '"https://admin.rustdesk.com".to_owned()',
+              '"https://rd.1128.pp.ua:21114".to_owned()'
+          )
+          with open('common.rs', 'w') as f:
+              f.write(content)
+          EOF
 
-    - name: Modify common.rs
-      run: |
-        python <<CODE
-        # 修改src/common.rs
-        file_path = 'src/common.rs'
-        target = '"https://admin.rustdesk.com".to_owned()'
-        replacement = '"https://rd.1128.pp.ua:21114".to_owned()'
-        
-        with open(file_path, 'r') as f:
-            content = f.read()
-        
-        if content.count(target) != 1:
-            raise Exception(f"匹配模式不唯一，发现 {content.count(target)} 处匹配")
-        
-        with open(file_path, 'w') as f:
-            f.write(content.replace(target, replacement))
-        CODE
+      - name: Modify flutter-ci.yml using Python
+        run: |
+          cd rustdesk/.github/workflows
+          python3 - <<EOF
+          with open('flutter-ci.yml', 'r') as f:
+              content = f.read()
+          content = content.replace(
+              'upload-artifact: false',
+              'upload-artifact: true'
+          )
+          with open('flutter-ci.yml', 'w') as f:
+              f.write(content)
+          EOF
 
-    - name: Modify flutter-ci.yml
-      run: |
-        python <<CODE
-        # 修改.github/workflows/flutter-ci.yml
-        file_path = '.github/workflows/flutter-ci.yml'
-        target = 'upload-artifact: false'
-        replacement = 'upload-artifact: true'
-        
-        with open(file_path, 'r') as f:
-            lines = f.readlines()
-        
-        modified = False
-        for i in range(len(lines)):
-            if lines[i].strip() == target:
-                lines[i] = replacement + '\n'
-                modified = True
-                break
-        
-        if not modified:
-            raise Exception("未找到需要修改的目标行")
-        
-        with open(file_path, 'w') as f:
-            f.writelines(lines)
-        CODE
-
-      # 10. 直接将更改提交并推送到默认分支
       - name: Commit and push changes to the default branch
         run: |
-          cd rustdesk  # 确保在仓库目录内
-          # 获取默认分支名称
+          cd rustdesk
           DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | sed 's/.*: //')
-          # 确保当前在正确的默认分支
           git checkout $DEFAULT_BRANCH
-          # 拉取最新的默认分支内容
           git pull origin $DEFAULT_BRANCH
-          # 添加所有文件（包括新增和修改的文件）
-          git add .  # 添加整个目录中的所有文件
-          # 提交更改
+          git add .
           git commit -m "Automated changes for RustDesk project"
-          # 使用 PAT 进行认证并推送更改到默认分支
           git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} $DEFAULT_BRANCH
-
