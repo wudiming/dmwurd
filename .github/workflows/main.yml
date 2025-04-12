@@ -61,27 +61,71 @@ jobs:
           cd rustdesk  # 确保在仓库目录内
           # 检查并删除 libs/hbb_common 中的 .git 目录（避免嵌套 git 仓库）
           rm -rf libs/hbb_common/.git
-      # 7. 修改 libs/hbb_common/src/config.rs 文件中的内容
-      - name: Modify config.rs
-        run: |
-          cd rustdesk  # 确保在仓库目录内
-          # 使用 sed 命令替换 config.rs 文件中的 RENDEZVOUS_SERVERS 和 RS_PUB_KEY
-          sed -i 's|pub const RENDEZVOUS_SERVERS: \[&str\] = &\["rs-ny.rustdesk.com"\];|pub const RENDEZVOUS_SERVERS: \[&str\] = &\["rd.1128.pp.ua"\];|' libs/hbb_common/src/config.rs
-          sed -i 's|pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";|pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";|' libs/hbb_common/src/config.rs
 
-      # 8. 修改 src/common.rs 文件中的内容
-      - name: Modify common.rs
-        run: |
-          cd rustdesk  # 确保在仓库目录内
-          # 使用 sed 命令替换 common.rs 文件中的 URL
-          sed -i 's|"https://admin.rustdesk.com".to_owned()|"https://rd.1128.pp.ua:21114".to_owned()|' src/common.rs
+    - name: Checkout repository with submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-      # 9. 修改 .github/workflows/flutter-ci.yml 文件中的 upload-artifact 设置
-      - name: Modify flutter-ci.yml
-        run: |
-          cd rustdesk  # 确保在仓库目录内
-          # 使用 sed 命令将 upload-artifact 设置从 false 改为 true
-          sed -i 's|upload-artifact: false|upload-artifact: true|' .github/workflows/flutter-ci.yml
+    - name: Modify config.rs
+      run: |
+        python <<CODE
+        # 精确修改libs/hbb_common/src/config.rs
+        file_path = 'libs/hbb_common/src/config.rs'
+        new_lines = []
+        with open(file_path, 'r') as f:
+            for line in f:
+                if 'RENDEZVOUS_SERVERS' in line:
+                    line = 'pub const RENDEZVOUS_SERVERS: &[&str] = &["rd.1128.pp.ua"];\n'
+                elif 'RS_PUB_KEY' in line:
+                    line = 'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";\n'
+                new_lines.append(line)
+        with open(file_path, 'w') as f:
+            f.writelines(new_lines)
+        CODE
+
+    - name: Modify common.rs
+      run: |
+        python <<CODE
+        # 修改src/common.rs
+        file_path = 'src/common.rs'
+        target = '"https://admin.rustdesk.com".to_owned()'
+        replacement = '"https://rd.1128.pp.ua:21114".to_owned()'
+        
+        with open(file_path, 'r') as f:
+            content = f.read()
+        
+        if content.count(target) != 1:
+            raise Exception(f"匹配模式不唯一，发现 {content.count(target)} 处匹配")
+        
+        with open(file_path, 'w') as f:
+            f.write(content.replace(target, replacement))
+        CODE
+
+    - name: Modify flutter-ci.yml
+      run: |
+        python <<CODE
+        # 修改.github/workflows/flutter-ci.yml
+        file_path = '.github/workflows/flutter-ci.yml'
+        target = 'upload-artifact: false'
+        replacement = 'upload-artifact: true'
+        
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+        
+        modified = False
+        for i in range(len(lines)):
+            if lines[i].strip() == target:
+                lines[i] = replacement + '\n'
+                modified = True
+                break
+        
+        if not modified:
+            raise Exception("未找到需要修改的目标行")
+        
+        with open(file_path, 'w') as f:
+            f.writelines(lines)
+        CODE
 
       # 10. 直接将更改提交并推送到默认分支
       - name: Commit and push changes to the default branch
