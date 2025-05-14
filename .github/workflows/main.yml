@@ -100,6 +100,21 @@ jobs:
               f.write(content)
           EOF
 
+      - name: Modify download URL in Dart file
+        run: |
+          cd rustdesk/flutter/lib/desktop/pages
+          python3 - <<EOF
+          with open('desktop_home_page.dart', 'r') as f:
+              content = f.read()
+          # 精确替换目标 URL，保留代码结构
+          content = content.replace(
+              "launchUrl(Uri.parse('https://rustdesk.com/download'))",
+              "launchUrl(Uri.parse('https://github.com/wudiming/actionrd/releases'))"
+          )
+          with open('desktop_home_page.dart', 'w') as f:
+              f.write(content)
+          EOF
+
       - name: Commit and push changes to the default branch
         run: |
           cd rustdesk
