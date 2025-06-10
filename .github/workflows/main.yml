@@ -1,4 +1,4 @@
-act: Modify and Build RustDesk
+name: Modify and Build RustDesk
 
 on:
   workflow_dispatch:
