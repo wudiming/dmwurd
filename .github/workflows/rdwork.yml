@@ -69,23 +69,23 @@ jobs:
         run: |
           cd rustdesk/libs/hbb_common/src
           python3 - <<EOF
-          import re
-          with open('config.rs', 'r') as f:
-              content = f.read()
-          content, _ = re.subn(
-              r'pub\s+const\s+RENDEZVOUS_SERVERS\s*:\s*&\[&str\]\s*=\s*&\[.*?\];',
-              'pub const RENDEZVOUS_SERVERS: &[&str] = &["rd.1128.pp.ua"];',
-              content,
-              flags=re.DOTALL
-          )
-          content, _ = re.subn(
-              r'pub\s+const\s+RS_PUB_KEY\s*:\s*&str\s*=\s*".*?"\s*;',
-              'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";',
-              content
-          )
-          with open('config.rs', 'w') as f:
-              f.write(content)
-          EOF
+import re
+with open('config.rs', 'r') as f:
+    content = f.read()
+content, _ = re.subn(
+    r'pub\\s+const\\s+RENDEZVOUS_SERVERS\\s*:\\s*&\\[&str\\]\\s*=\\s*&\\[.*?\\];',
+    'pub const RENDEZVOUS_SERVERS: &[&str] = &["rd.1128.pp.ua"];',
+    content,
+    flags=re.DOTALL
+)
+content, _ = re.subn(
+    r'pub\\s+const\\s+RS_PUB_KEY\\s*:\\s*&str\\s*=\\s*".*?"\\s*;',
+    'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";',
+    content
+)
+with open('config.rs', 'w') as f:
+    f.write(content)
+EOF
 
       - name: ✏️ 修改 common.rs 管理地址
         if: steps.check-version.outputs.skip_build == 'false'
@@ -93,48 +93,72 @@ jobs:
           cd rustdesk/src
           sed -i 's|"https://admin.rustdesk.com".to_owned()|"https://rd.1128.pp.ua:21114".to_owned()|g' common.rs
 
-      - name: ✏️ 修改 flutter-ci.yml 上传设置
-        if: steps.check-version.outputs.skip_build == 'false'
-        run: |
-          cd rustdesk/.github/workflows
-          sed -i 's/upload-artifact: false/upload-artifact: true/g' flutter-ci.yml
-
       - name: ✏️ 修改下载链接 desktop_home_page.dart
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/flutter/lib/desktop/pages
           sed -i "s|https://rustdesk.com/download|https://github.com/wudiming/dmwurd/releases|g" desktop_home_page.dart
 
-      - name: ➕ 插入删除 master 分支逻辑到 flutter-build.yml
+      - name: ✏️ 修改 flutter-ci.yml 上传设置
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          FILE="rustdesk/.github/workflows/flutter-build.yml"
-          INSERT_LOGIC=$(cat <<'EOF'
+          cd rustdesk/.github/workflows
+          sed -i 's/upload-artifact: false/upload-artifact: true/g' flutter-ci.yml
+
+      - name: ➕ 自动插入删除 master 分支 Job（依赖所有其他 Job）
+        if: steps.check-version.outputs.skip_build == 'false'
+        run: |
+          cd rustdesk/.github/workflows
+          python3 - <<EOF
+import yaml
+
+file_path = "flutter-build.yml"
+with open(file_path, "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f)
+
+jobs = data.get("jobs", {})
+if "delete-master-branch" in jobs:
+    print("⚠️ 已存在 delete-master-branch Job，跳过插入")
+    exit(0)
+
+job_names = [j for j in jobs if j != "delete-master-branch"]
+needs_line = ", ".join(job_names)
+
+block = f"""
+  delete-master-branch:
+    needs: [{needs_line}]
+    runs-on: ubuntu-latest
+    if: ${{{{ always() }}}}
+    steps:
       - name: 删除 master 分支（若不是默认分支）
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{{{ secrets.PAT_TOKEN }}}}
         run: |
           echo "检查默认分支..."
-          default_branch=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }} | jq -r .default_branch)
-
+          default_branch=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{{{ github.repository }}}} | jq -r .default_branch)
           if [ "$default_branch" != "master" ]; then
             echo "默认分支为 $default_branch，允许删除 master"
             git push origin --delete master
           else
             echo "⚠️ master 是默认分支，不能删除"
           fi
+"""
+
+with open(file_path, "r", encoding="utf-8") as f:
+    lines = f.readlines()
+
+idx = len(lines)
+for i in reversed(range(len(lines))):
+    if lines[i].startswith("  ") and not lines[i].startswith("    "):
+        idx = i + 1
+        break
+
+lines.insert(idx, block + "\n")
+with open(file_path, "w", encoding="utf-8") as f:
+    f.writelines(lines)
+
+print("✅ 插入成功")
 EOF
-          )
-          if ! grep -q "删除 master 分支" "$FILE"; then
-            echo "插入删除逻辑..."
-            awk -v insert="$INSERT_LOGIC" '
-              /上传构建产物/ { print; found=1; next }
-              found && NF==0 { print insert; found=0 }
-              { print }
-            ' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-          else
-            echo "flutter-build.yml 中已包含删除逻辑"
-          fi
 
       - name: 📝 提交并推送修改
         if: steps.check-version.outputs.skip_build == 'false'
