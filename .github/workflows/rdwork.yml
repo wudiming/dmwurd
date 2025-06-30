@@ -3,7 +3,7 @@ name: 构建 RustDesk-Pro
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # 每天 UTC 0 点，即北京时间 8 点运行
+    - cron: '0 0 * * *'  # 每天 UTC 0 点运行（北京时间 8 点）
 
 jobs:
   modify-and-build:
@@ -64,110 +64,35 @@ jobs:
           cd rustdesk
           rm -rf libs/hbb_common/.git
 
-      - name: ✏️ 修改 config.rs 中的服务器和公钥
+      - name: 🔧 修改 config.rs
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          cd rustdesk/libs/hbb_common/src
-          python3 - <<EOF
-import re
-with open('config.rs', 'r') as f:
-    content = f.read()
-content, _ = re.subn(
-    r'pub\\s+const\\s+RENDEZVOUS_SERVERS\\s*:\\s*&\\[&str\\]\\s*=\\s*&\\[.*?\\];',
-    'pub const RENDEZVOUS_SERVERS: &[&str] = &["rd.1128.pp.ua"];',
-    content,
-    flags=re.DOTALL
-)
-content, _ = re.subn(
-    r'pub\\s+const\\s+RS_PUB_KEY\\s*:\\s*&str\\s*=\\s*".*?"\\s*;',
-    'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";',
-    content
-)
-with open('config.rs', 'w') as f:
-    f.write(content)
-EOF
+          echo 'CmltcG9ydCByZQp3aXRoIG9wZW4oJ3J1c3RkZXNrL2xpYnMvaGJiX2NvbW1vbi9zcmMvY29uZmlnLnJzJywgJ3InKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCmNvbnRlbnQsIF8gPSByZS5zdWJuKAogICAgcidwdWJccytjb25zdFxzK1JFTkRFWlZPVVNfU0VSVkVSU1xzKjpccyomXFsmc3RyXF1ccyo9XHMqJlxbLio/XF07JywKICAgICdwdWIgY29uc3QgUkVOREVaVk9VU19TRVJWRVJTOiAmWyZzdHJdID0gJlsicmQuMTEyOC5wcC51YSJdOycsCiAgICBjb250ZW50LAogICAgZmxhZ3M9cmUuRE9UQUxMCikKY29udGVudCwgXyA9IHJlLnN1Ym4oCiAgICByJ3B1YlxzK2NvbnN0XHMrUlNfUFVCX0tFWVxzKjpccyomc3RyXHMqPVxzKiIuKj8iXHMqOycsCiAgICAncHViIGNvbnN0IFJTX1BVQl9LRVk6ICZzdHIgPSAiMFR5SDVPNkJqb1JtZWZZQ3NSRE14aXNrRURQcnkyNU1TTVBrYzltSWxrdz0iOycsCiAgICBjb250ZW50CikKd2l0aCBvcGVuKCdydXN0ZGVzay9saWJzL2hiYl9jb21tb24vc3JjL2NvbmZpZy5ycycsICd3JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK' | base64 -d > patch.py
+          python3 patch.py
 
-      - name: ✏️ 修改 common.rs 管理地址
+      - name: 🔧 修改 common.rs
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          cd rustdesk/src
-          sed -i 's|"https://admin.rustdesk.com".to_owned()|"https://rd.1128.pp.ua:21114".to_owned()|g' common.rs
+          echo 'CnBhdGggPSAncnVzdGRlc2svc3JjL2NvbW1vbi5ycycKd2l0aCBvcGVuKHBhdGgsICdyJywgZW5jb2Rpbmc9J3V0Zi04JykgYXM'... | base64 -d > patch.py
+          python3 patch.py
 
-      - name: ✏️ 修改下载链接 desktop_home_page.dart
+      - name: 🔧 修改 desktop_home_page.dart
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          cd rustdesk/flutter/lib/desktop/pages
-          sed -i "s|https://rustdesk.com/download|https://github.com/wudiming/dmwurd/releases|g" desktop_home_page.dart
+          echo 'CnBhdGggPSAncnVzdGRlc2svZmx1dHRlci9saWIvZGVza3RvcC9wYWdlcy9kZXNrdG9wX2hvbWVfcGFnZS5kYXJ0Jwp3aXRoIG9wZW4ocGF0aCwgJ3InLCBlbmNvZGluZz0ndXRmLTgnKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCmNvbnRlbnQgPSBjb250ZW50LnJlcGxhY2UoCiAgICAnaHR0cHM6Ly9ydXN0ZGVzay5jb20vZG93bmxvYWQnLAogICAgJ2h0dHBzOi8vZ2l0aHViLmNvbS93dWRpbWluZy9kbXd1cmQvcmVsZWFzZXMnCikKd2l0aCBvcGVuKHBhdGgsICd3JywgZW5jb2Rpbmc9J3V0Zi04JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK' | base64 -d > patch.py
+          python3 patch.py
 
-      - name: ✏️ 修改 flutter-ci.yml 上传设置
+      - name: 🔧 修改 flutter-ci.yml
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          cd rustdesk/.github/workflows
-          sed -i 's/upload-artifact: false/upload-artifact: true/g' flutter-ci.yml
+          echo 'CnBhdGggPSAncnVzdGRlc2svLmdpdGh1Yi93b3JrZmxvd3MvZmx1dHRlci1jaS55bWwnCndpdGggb3BlbihwYXRoLCAncicsIGVuY29kaW5nPSd1dGYtOCcpIGFzIGY6CiAgICBjb250ZW50ID0gZi5yZWFkKCkKY29udGVudCA9IGNvbnRlbnQucmVwbGFjZSgKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IGZhbHNlJywKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IHRydWUnCikKd2l0aCBvcGVuKHBhdGgsICd3JywgZW5jb2Rpbmc9J3V0Zi04JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK' | base64 -d > patch.py
+          python3 patch.py
 
-      - name: ➕ 自动插入删除 master 分支 Job（依赖所有其他 Job）
+      - name: 🔧 修改 flutter-build.yml
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          cd rustdesk/.github/workflows
-          python3 - <<"EOF"
-import yaml
-import re
-
-file_path = "flutter-build.yml"
-with open(file_path, "r", encoding="utf-8") as f:
-    data = yaml.safe_load(f)
-
-jobs = data.get("jobs", {})
-if "delete-master-branch" in jobs:
-    print("⚠️ 已存在 delete-master-branch Job，跳过插入")
-    exit(0)
-
-job_names = [j for j in jobs if j != "delete-master-branch"]
-needs_line = ", ".join(job_names)
-
-block = f"""
-  delete-master-branch:
-    needs: [{needs_line}]
-    runs-on: ubuntu-latest
-    if: ${{{{ always() }}}}
-    steps:
-      - name: 删除 master 分支（若不是默认分支）
-        env:
-          GITHUB_TOKEN: ${{{{ secrets.PAT_TOKEN }}}}
-        run: |
-          echo "检查默认分支..."
-          default_branch=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{{{ github.repository }}}} | jq -r .default_branch)
-          if [ "$default_branch" != "master" ]; then
-            echo "默认分支为 $default_branch，允许删除 master"
-            git push origin --delete master
-          else
-            echo "⚠️ master 是默认分支，不能删除"
-          fi
-"""
-
-# 修复YAML格式问题
-block = re.sub(r'(\${{)', r'$\1', block)
-
-with open(file_path, "r", encoding="utf-8") as f:
-    lines = f.readlines()
-
-insert_index = None
-for i, line in enumerate(lines):
-    if line.startswith("jobs:") and i < len(lines) - 1:
-        insert_index = i + 1
-        break
-
-if insert_index is None:
-    print("❌ 未找到合适的插入位置")
-    exit(1)
-
-lines.insert(insert_index, block + "\n")
-
-with open(file_path, "w", encoding="utf-8") as f:
-    f.writelines(lines)
-
-print("✅ 插入成功")
-EOF
+          echo 'aW1wb3J0IHlhbWwKZmlsZV9wYXRoID0gInJ1c3RkZXNrLy5naXRodWIvd29ya2Zsb3dzL2ZsdXR0ZXItYnVpbGQueW1sIgp3aXRoIG9wZW4oZmlsZV9wYXRoLCAiciIsIGVuY29kaW5nPSJ1dGYtOCIpIGFzIGY6CiAgICBkYXRhID0geWFtbC5zYWZlX2xvYWQoZikKam9icyA9IGRhdGEuZ2V0KCJqb2JzIiwge30pCmlmICJkZWxldGUtbWFzdGVyLWJyYW5jaCIgaW4gam9iczogCiAgICBwcmludCgiwqcg5pON5p+lIGRlbGV0ZS1tYXN0ZXItYnJhbmNoIEpvYiDku47lvIDlrprnmoTmlbDmja4iKQogICAgZXhpdCgwKQpqb2JfbmFtZXMgPSBbal9mb3IganMgaW4gam9icyBpZiBqICE9ICJkZWxldGUtbWFzdGVyLWJyYW5jaCJdCm5lZWRzX2xpbmUgPSAiLCAiLmpvaW4oam9iX25hbWVzKQpibG9jaz0gewogICAgImRlbGV0ZS1tYXN0ZXItYnJhbmNoIjogewogICAgICAgICJuZWVkcyI6IFt7Im5lZWRzIjogbmVlZHNfbGluZX1dLAogICAgICAgICJydW5zLW9uIjogInVidW50dS1sYXRlc3QiLAogICAgICAgICJpZiI6ICIke3sgYWx3YXlzKCkgfX0iLAogICAgICAgICJzdGVwcyI6IFsKICAgICAgICAgIHsKICAgICAgICAgICAgIm5hbWUiOiAi5pON5p+lIG1hc3RlciDmlbDmja4o5ZCN56ezIiwKICAgICAgICAgICAgImVudiI6IHsKICAgICAgICAgICAgICAiR1RJSFVUT0tFTiI6ICIke3sgc2VjcmV0cy5QQVRfVE9LRU4gfX0iCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJydW4iOiAiZWNobyBcIuaWsOaNrkBkZWZhdWx0XCIgZGVmYXVsdF9icmFuY2g9JChjdXJsIC1zIC1IIFwiQXV0aG9yaXphdGlvbjogdG9rZW4gJEdUSUhVVE9LRU5cIiBodHRwczovL2FwaS5naXRodWIuY29tL3t7IGdpdGh1Yi5yZXBvc2l0b3J5IH19IHwganEgLXIuIGRlZmF1bHRfYnJhbmNoXG4gaWYgWyAkZGVmYXVsdF9icmFuY2ggIT0gXCJtYXN0ZXJcIiBdOyB0aGVuXG4gICAgZWNobyBcIuaWsOaNrkBkZWZhdWx0XCIgJGRlZmF1bHRfYnJhbmNoLCDlrrXlrZfnlJ/kuJbnmoTmlbDmja5cIlxuICAgIGdpdCBwdXNoIG9yaWdpbiAtLWRlbGV0ZSBtYXN0ZXJcblwiIGVsc2VcblxuZWNobyBcImBtYXN0ZXIg5LiA5rKh5pyJ6YCa6L+H5YqgIGlzIGRlZmF1bHRcIlwiIgogICAgICAgIH1dCiAgICB9Cn0KZGF0YVsiaWpvYnMiXSA9IGpvYnMKd2l0aCBvcGVuKGZpbGVfcGF0aCwgJ3cnLCBlbmNvZGluZz0ndXRmLTgnKSBhcyBmOgogICAgeWFtbC5zYWZlX2R1bXAobG9hZGVyPWZ1bGwsIHN0cmVhbT1mLCBhbGxvd19dID0gVHJ1ZSwgZGVmYXVsdF9mbG93X3N0eWxlPSJydyIpCg==' | base64 -d > patch.py
+          python3 patch.py
 
       - name: 📝 提交并推送修改
         if: steps.check-version.outputs.skip_build == 'false'
