@@ -1,126 +1,154 @@
-name: Modify and Build RustDesk
+name: 构建 RustDesk-Pro
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 每天 UTC 0 点，即北京时间 8 点运行
 
 jobs:
   modify-and-build:
     runs-on: ubuntu-latest
 
+    env:
+      LOCAL_TAG_FILE: temp/tag.md
+
     steps:
-      - name: Configure Git user info
+      - name: 🔍 检查是否需要运行构建任务
+        id: check-version
+        run: |
+          mkdir -p temp
+          touch $LOCAL_TAG_FILE
+          echo "local_tag=$(cat $LOCAL_TAG_FILE || echo 'none')" >> $GITHUB_ENV
+          latest_tag=$(curl -s https://api.github.com/repos/rustdesk/rustdesk/tags | jq -r '.[2].name')
+          echo "remote_tag=$latest_tag" >> $GITHUB_ENV
+
+          if [ "$latest_tag" == "$(cat $LOCAL_TAG_FILE)" ]; then
+            echo "版本一致，无需构建"
+            echo "skip_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "版本不一致，执行构建"
+            echo "skip_build=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📦 设置 Git 用户信息
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
 
-      - name: Clone rustdesk repository and initialize submodules
+      - name: 📁 克隆 rustdesk 仓库及子模块
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           git clone --recurse-submodules https://github.com/rustdesk/rustdesk.git
-          cd rustdesk
 
-      - name: Read submodule information from .gitmodules
-        id: submodule-info
+      - name: 🧹 移除子模块引用并删除文件
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk
           SUBMODULE_PATH=$(git config -f .gitmodules --get submodule.libs/hbb_common.path)
-          SUBMODULE_URL=$(git config -f .gitmodules --get submodule.libs/hbb_common.url)
-          echo "::set-output name=submodule_path::$SUBMODULE_PATH"
-          echo "::set-output name=submodule_url::$SUBMODULE_URL"
-
-      - name: Remove submodule reference and delete files
-        run: |
-          cd rustdesk
-          SUBMODULE_PATH=${{ steps.submodule-info.outputs.submodule_path }}
           git submodule deinit -f $SUBMODULE_PATH
           git rm --cached $SUBMODULE_PATH
           rm -rf $SUBMODULE_PATH
 
-      - name: Clone submodule from URL
+      - name: 🔄 重新克隆子模块
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk
-          SUBMODULE_URL=${{ steps.submodule-info.outputs.submodule_url }}
-          SUBMODULE_PATH=${{ steps.submodule-info.outputs.submodule_path }}
+          SUBMODULE_URL=$(git config -f .gitmodules --get submodule.libs/hbb_common.url)
+          SUBMODULE_PATH=$(git config -f .gitmodules --get submodule.libs/hbb_common.path)
           git clone $SUBMODULE_URL $SUBMODULE_PATH
 
-      - name: Remove nested git repository if exists
+      - name: 🧹 删除嵌套 Git 仓库
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk
           rm -rf libs/hbb_common/.git
 
-      - name: Modify config.rs using Python (Precise Debug)
+      - name: ✏️ 修改 config.rs 中的服务器和公钥
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/libs/hbb_common/src
           python3 - <<EOF
           import re
           with open('config.rs', 'r') as f:
               content = f.read()
-          modified_content, count_rendezvous = re.subn(
-              r'pub\s+const\s+RENDEZVOUS_SERVERS\s*:\s*&\[&str\]\s*=\s*&\[\s*"rs-ny\.rustdesk\.com"\s*\];',
+          content, _ = re.subn(
+              r'pub\s+const\s+RENDEZVOUS_SERVERS\s*:\s*&\[&str\]\s*=\s*&\[.*?\];',
               'pub const RENDEZVOUS_SERVERS: &[&str] = &["rd.1128.pp.ua"];',
               content,
               flags=re.DOTALL
           )
-          modified_content, count_pubkey = re.subn(
-              r'pub\s+const\s+RS_PUB_KEY\s*:\s*&str\s*=\s*"OeVuKk5nlHiXp\+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw="\s*;',
+          content, _ = re.subn(
+              r'pub\s+const\s+RS_PUB_KEY\s*:\s*&str\s*=\s*".*?"\s*;',
               'pub const RS_PUB_KEY: &str = "0TyH5O6BjoRmefYCsRDMxiskEDPry25MSMPkc9mIlkw=";',
-              modified_content,
-              flags=re.DOTALL
+              content
           )
-          print(f"[DEBUG] RENDEZVOUS_SERVERS替换次数: {count_rendezvous}")
-          print(f"[DEBUG] RS_PUB_KEY替换次数: {count_pubkey}")
           with open('config.rs', 'w') as f:
-              f.write(modified_content)
+              f.write(content)
           EOF
 
-      - name: Modify common.rs using Python
+      - name: ✏️ 修改 common.rs 管理地址
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/src
-          python3 - <<EOF
-          with open('common.rs', 'r') as f:
-              content = f.read()
-          content = content.replace(
-              '"https://admin.rustdesk.com".to_owned()',
-              '"https://rd.1128.pp.ua:21114".to_owned()'
-          )
-          with open('common.rs', 'w') as f:
-              f.write(content)
-          EOF
+          sed -i 's|"https://admin.rustdesk.com".to_owned()|"https://rd.1128.pp.ua:21114".to_owned()|g' common.rs
 
-      - name: Modify flutter-ci.yml using Python
+      - name: ✏️ 修改 flutter-ci.yml 上传设置
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/.github/workflows
-          python3 - <<EOF
-          with open('flutter-ci.yml', 'r') as f:
-              content = f.read()
-          content = content.replace(
-              'upload-artifact: false',
-              'upload-artifact: true'
-          )
-          with open('flutter-ci.yml', 'w') as f:
-              f.write(content)
-          EOF
+          sed -i 's/upload-artifact: false/upload-artifact: true/g' flutter-ci.yml
 
-      - name: Modify download URL in Dart file
+      - name: ✏️ 修改下载链接 desktop_home_page.dart
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/flutter/lib/desktop/pages
-          python3 - <<EOF
-          with open('desktop_home_page.dart', 'r') as f:
-              content = f.read()
-          # 精确替换目标 URL，保留代码结构
-          content = content.replace(
-              "launchUrl(Uri.parse('https://rustdesk.com/download'))",
-              "launchUrl(Uri.parse('https://github.com/wudiming/dmwurd/releases'))"
-          )
-          with open('desktop_home_page.dart', 'w') as f:
-              f.write(content)
-          EOF
+          sed -i "s|https://rustdesk.com/download|https://github.com/wudiming/dmwurd/releases|g" desktop_home_page.dart
 
-      - name: Commit and push changes to the default branch
+      - name: ➕ 插入删除 master 分支逻辑到 flutter-build.yml
+        if: steps.check-version.outputs.skip_build == 'false'
+        run: |
+          FILE="rustdesk/.github/workflows/flutter-build.yml"
+          INSERT_LOGIC=$(cat <<'EOF'
+      - name: 删除 master 分支（若不是默认分支）
+        if: inputs.upload-artifact == true
+        run: |
+          echo "检查默认分支..."
+          default_branch=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" https://api.github.com/repos/${{ github.repository }} | jq -r .default_branch)
+
+          if [ "$default_branch" != "master" ]; then
+            echo "默认分支为 $default_branch，允许删除 master"
+            git push origin --delete master
+          else
+            echo "⚠️ master 是默认分支，不能删除"
+            exit 1
+          fi
+EOF
+          )
+
+          if ! grep -q "删除 master 分支" "$FILE"; then
+            echo "插入删除逻辑..."
+            awk -v insert="$INSERT_LOGIC" '
+              /上传构建产物/ { print; found=1; next }
+              found && NF==0 { print insert; found=0 }
+              { print }
+            ' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+          else
+            echo "flutter-build.yml 中已包含删除逻辑"
+          fi
+
+      - name: 📝 提交并推送修改
+        if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk
-          DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | sed 's/.*: //')
+          DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
           git checkout $DEFAULT_BRANCH
           git pull origin $DEFAULT_BRANCH
           git add .
-          git commit -m "Automated changes for RustDesk project"
+          git commit -m "自动化修改 RustDesk 配置与依赖，并插入删除 master 分支逻辑"
           git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} $DEFAULT_BRANCH
+
+      - name: 📌 更新本地版本记录 tag.md
+        if: steps.check-version.outputs.skip_build == 'false'
+        run: |
+          echo "${{ env.remote_tag }}" > $LOCAL_TAG_FILE
