@@ -124,25 +124,26 @@ if "delete-master-branch" in jobs:
 job_names = [j for j in jobs if j != "delete-master-branch"]
 needs_line = ", ".join(job_names)
 
-block = f"""
+# 修复点：使用单引号包裹整个字符串，避免${{}}解析问题
+block = '''
   delete-master-branch:
-    needs: [{needs_line}]
+    needs: [''' + needs_line + ''']
     runs-on: ubuntu-latest
-    if: ${{{{ always() }}}}
+    if: ${{ always() }}
     steps:
       - name: 删除 master 分支（若不是默认分支）
         env:
-          GITHUB_TOKEN: ${{{{ secrets.PAT_TOKEN }}}}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           echo "检查默认分支..."
-          default_branch=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{{{ github.repository }}}} | jq -r .default_branch)
+          default_branch=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }} | jq -r .default_branch)
           if [ "$default_branch" != "master" ]; then
             echo "默认分支为 $default_branch，允许删除 master"
             git push origin --delete master
           else
             echo "⚠️ master 是默认分支，不能删除"
           fi
-"""
+'''
 
 with open(file_path, "r", encoding="utf-8") as f:
     lines = f.readlines()
