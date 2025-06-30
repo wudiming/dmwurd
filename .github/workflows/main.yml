@@ -111,21 +111,20 @@ jobs:
           FILE="rustdesk/.github/workflows/flutter-build.yml"
           INSERT_LOGIC=$(cat <<'EOF'
       - name: 删除 master 分支（若不是默认分支）
-        if: inputs.upload-artifact == true
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           echo "检查默认分支..."
-          default_branch=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" https://api.github.com/repos/${{ github.repository }} | jq -r .default_branch)
+          default_branch=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }} | jq -r .default_branch)
 
           if [ "$default_branch" != "master" ]; then
             echo "默认分支为 $default_branch，允许删除 master"
             git push origin --delete master
           else
             echo "⚠️ master 是默认分支，不能删除"
-            exit 1
           fi
 EOF
           )
-
           if ! grep -q "删除 master 分支" "$FILE"; then
             echo "插入删除逻辑..."
             awk -v insert="$INSERT_LOGIC" '
