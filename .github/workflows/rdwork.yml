@@ -94,13 +94,6 @@ jobs:
           cd rustdesk/.github/workflows
           python3 ../../../python/reflutter.py
 
-      - name: 🔧 修改 flutter-build.yml
-        if: steps.check-version.outputs.skip_build == 'false'
-        run: |
-          cd rustdesk/.github/workflows
-          pip install pyyaml
-          python3 ../../../python/rebuild.py
-
       - name: 📝 提交并推送修改
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
