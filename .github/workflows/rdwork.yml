@@ -109,7 +109,7 @@ jobs:
           git checkout $DEFAULT_BRANCH
           git pull origin $DEFAULT_BRANCH
           git add .
-          git commit -m "自动化修改 RustDesk 配置与依赖，并插入删除 master 分支逻辑"
+          git commit -m "构建rustdesk-pro"
           git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} $DEFAULT_BRANCH
 
       - name: 📝📌 写入并提交 tag.md
