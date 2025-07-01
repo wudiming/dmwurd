@@ -74,32 +74,32 @@ jobs:
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/libs/hbb_common/src
-          python3 python/reconfig.py
+          python3 ../../../python/reconfig.py
           
       - name: 🔧 修改 common.rs
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/src
-          echo "d2l0aCBvcGVuKCdjb21tb24ucnMnLCAncicpIGFzIGY6CiAgICBjb250ZW50ID0gZi5yZWFkKCkKY29udGVudCA9IGNvbnRlbnQucmVwbGFjZSgKICAgICciaHR0cHM6Ly9hZG1pbi5ydXN0ZGVzay5jb20iLnRvX293bmVkKCknLAogICAgJyJodHRwczovL3JkLjExMjgucHAudWE6MjExMTQiLnRvX293bmVkKCknCikKd2l0aCBvcGVuKCdjb21tb24ucnMnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKGNvbnRlbnQpCg==" | base64 -d | python3
-
+          python3 ../../../python/recommon.py
+          
       - name: 🔧 修改 desktop_home_page.dart
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/flutter/lib/desktop/pages
-          echo "d2l0aCBvcGVuKCdkZXNrdG9wX2hvbWVfcGFnZS5kYXJ0JywgJ3InKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCiMg5a+55oCn5ZCO5o6oIFVSTCwg5L+d5q2j5pyq6K6w5b2VIGNvZGUgc3RydWN0dXJlCmNvbnRlbnQgPSBjb250ZW50LnJlcGxhY2UoCiAgICAibGF1bmNoVXJsKFVyaS5wYXJzZSgnaHR0cHM6Ly9ydXN0ZGVzay5jb20vZG93bmxvYWQnKSk\",\nICAgICJsYXVuY2hVcmwoVXJpLnBhcnNlKCdodHRwczovL2dpdGh1Yi5jb20vd3VkaW1pbmcvZG13dXJkL3JlbGVhc2VzJykpIgopCndpdGggb3BlbignZGVza3RvcF9ob21lX3BhZ2UuZGFydCcsICd3JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK" | base64 -d | python3
+          python3 ../../../python/redesktop.py
 
       - name: 🔧 修改 flutter-ci.yml
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/.github/workflows
-          echo "d2l0aCBvcGVuKCdmbHV0dGVyLWNpLnlteWwnLCAncicpIGFzIGY6CiAgICBjb250ZW50ID0gZi5yZWFkKCkKY29udGVudCA9IGNvbnRlbnQucmVwbGFjZSgKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IGZhbHNlJywKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IHRydWUnCikKd2l0aCBvcGVuKCdmbHV0dGVyLWNpLnlteWwnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKGNvbnRlbnQpCg==" | base64 -d | python3
+          python3 ../../../python/reflutter.py
 
       - name: 🔧 修改 flutter-build.yml
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/.github/workflows
           pip install pyyaml
-          echo "aW1wb3J0IHlhbWwKZnJvbSBjb2xsZWN0aW9ucyBpbXBvcnQgT3JkZXJlZGREaWN0CgpmaWxlX25hbWUgPSAnZmx1dHRlci1idWlsZC55bWwnCndpdGggb3BlbihmaWxlX25hbWUsICdyJykgYXMgZjoKICAgIGNvbnRlbnQgPSBmLnJlYWQoKQpwYXJzZWQgPSB5YW1sLnNhZmVfbG9hZChjb250ZW50KQoKanVicyA9IHBhcnNlZC5nZXQoJ2pvYnMnLCB7fSkKaWYgbm90IGpvYnM6CiAgICByYWlzZSBWYWx1ZUVycm9yKCfov5nph4vmsqHmiqXorq7kuobmmK/mnLrliKnnmoTml7bpl7QnKQoKZGVmX25hbWUgPSAnZGVsZXRlLW1hc3Rlci1icmFuY2gnCgpsb2dfc3RlcHMgPSBbCiAgICB7J3J1bic6ICJnaXQgY2hlY2sgLS10IG9yaWdpbiB8fCBlY2hvICdObyBHaXRodWIgUmVwbycgfQogIF0KCiMg5a+G56CBbmVlZHMg6L+Z6YeLIGpvYgpwYXJzZWRbJ2pvYnMnXVsnbmV3LWhvb2snXSA9IHsKICAgICduYW1lJzogZGVmX25hbWUsCiAgICAnbmVlZHMnOiBsaXN0KGpvYnMua2V5cygpKSwKICAgICdydW5zLW9uJzogJ3VidW50dS1sYXRlc3QnLAogICAgJ3N0ZXBzJzogbG9nX3N0ZXBzCn0KCndpdGggb3BlbihmaWxlX25hbWUsICd3JykgYXMgZjoKICAgIGYud3JpdGUoeWFtbC5zYWZlX2R1bXAocGFyc2VkKSkK" | base64 -d | python3
+          python3 ../../../python/rebuild.py
 
       - name: 📝 提交并推送修改
         if: steps.check-version.outputs.skip_build == 'false'
