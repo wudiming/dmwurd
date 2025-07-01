@@ -74,8 +74,8 @@ jobs:
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/libs/hbb_common/src
-          echo "aW1wb3J0IHJlCndpdGggb3BlbignY29uZmlnLnJzJywgJ3InKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCm1vZGlmaWVkX2NvbnRlbnQsIGNvdW50X3JlbmRlenZvdXMgPSByZS5zdWJuKAogICAgcidwdWJccytjb25zdFxzK1JFTkRFWlZPVVNfU0VSVkVSU1xzKjpccyomXFsmc3RyXF1ccyo9XHMqJlxbXHMqInJzLW55XFwucnVzdGRlc2tcXC5jb20iXHMqXF07JywKICAgICdwdWIgY29uc3QgUkVOREVaVk9VU19TRVJWRVJTOiBbJl5zdHJdID0gWyJyZC4xMTI4LnBwLnVhIl07JywKICAgIGNvbnRlbnQsCiAgICBmbGFncz1yZS5ET1RBTExCCikKbW9kaWZpZWRfY29udGVudCwgY291bnRfcHVia2V5ID0gcmUuc3VibigKICAgICdwdWJccytjb25zdFxzK1JTX1BVQl9LRVlccyo6XHMrKlN0clxzKj1ccyoqIk9lVnVLazVubEhpWHArQVBObjBZM3BDMUl3cHduNDRKR3FyUUNzV3FtQnc9IlxzKjsnLAogICAgJ3B1YiBjb25zdCBSU19QVUJfS0VZOiAmc3RyID0gIjBUeUg1TzZCandSbWVmWUNzUkRNeGlza0VEUHJ5MjVNU01Qa2M5bUlsa3c9IjsnLAogICAgbW9kaWZpZWRfY29udGVudCwKICAgIGZsYWdzPXJlLkRPVEFMTAp9KQpwcmludChmIltERUJVR11dIFJFTkRFWlZPVVNfU0VSVkVSUy3mlrDlpb0rJiomIGNvdW50X3JlbmRlenZvdXMiKQpwcmludChmIltERUJVR11dIFJTX1BVQl9LRVnmlrDlpb0rJiomIGNvdW50X3B1YmtleSIpCndpdGggb3BlbignY29uZmlnLnJzJywgJ3cnKSBhcyBmOgogICAgZi53cml0ZShtb2RpZmllZF9jb250ZW50KQo=" | base64 -d | python3
-      
+          python3 python/reconfig.py
+          
       - name: 🔧 修改 common.rs
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
