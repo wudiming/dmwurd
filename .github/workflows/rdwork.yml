@@ -74,19 +74,19 @@ jobs:
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/libs/hbb_common/src
-          python3 ../../../python/reconfig.py
+          python3 ../../../../python/reconfig.py
           
       - name: 🔧 修改 common.rs
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/src
-          python3 ../../../python/recommon.py
+          python3 ../../python/recommon.py
           
       - name: 🔧 修改 desktop_home_page.dart
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/flutter/lib/desktop/pages
-          python3 ../../../python/redesktop.py
+          python3 ../../../../../python/redesktop.py
 
       - name: 🔧 修改 flutter-ci.yml
         if: steps.check-version.outputs.skip_build == 'false'
