@@ -18,15 +18,18 @@ jobs:
         run: |
           mkdir -p temp
           touch $LOCAL_TAG_FILE
-          echo "local_tag=$(cat $LOCAL_TAG_FILE || echo 'none')" >> $GITHUB_ENV
+          local_tag=$(cat $LOCAL_TAG_FILE || echo 'none')
+          echo "🔖 本地版本: $local_tag"
+          echo "local_tag=$local_tag" >> $GITHUB_ENV
           latest_tag=$(curl -s https://api.github.com/repos/rustdesk/rustdesk/tags | jq -r '.[2].name')
+          echo "🌐 远程版本: $latest_tag"
           echo "remote_tag=$latest_tag" >> $GITHUB_ENV
 
-          if [ "$latest_tag" == "$(cat $LOCAL_TAG_FILE)" ]; then
-            echo "版本一致，无需构建"
+          if [ "$latest_tag" == "$local_tag" ]; then
+            echo "✅ 版本一致，无需构建"
             echo "skip_build=true" >> $GITHUB_OUTPUT
           else
-            echo "版本不一致，执行构建"
+            echo "⚠️ 版本不一致，执行构建"
             echo "skip_build=false" >> $GITHUB_OUTPUT
           fi
 
@@ -67,32 +70,33 @@ jobs:
       - name: 🔧 修改 config.rs
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          echo 'CmltcG9ydCByZQp3aXRoIG9wZW4oJ3J1c3RkZXNrL2xpYnMvaGJiX2NvbW1vbi9zcmMvY29uZmlnLnJzJywgJ3InKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCmNvbnRlbnQsIF8gPSByZS5zdWJuKAogICAgcidwdWJccytjb25zdFxzK1JFTkRFWlZPVVNfU0VSVkVSU1xzKjpccyomXFsmc3RyXF1ccyo9XHMqJlxbLio/XF07JywKICAgICdwdWIgY29uc3QgUkVOREVaVk9VU19TRVJWRVJTOiAmWyZzdHJdID0gJlsicmQuMTEyOC5wcC51YSJdOycsCiAgICBjb250ZW50LAogICAgZmxhZ3M9cmUuRE9UQUxMCikKY29udGVudCwgXyA9IHJlLnN1Ym4oCiAgICByJ3B1YlxzK2NvbnN0XHMrUlNfUFVCX0tFWVxzKjpccyomc3RyXHMqPVxzKiIuKj8iXHMqOycsCiAgICAncHViIGNvbnN0IFJTX1BVQl9LRVk6ICZzdHIgPSAiMFR5SDVPNkJqb1JtZWZZQ3NSRE14aXNrRURQcnkyNU1TTVBrYzltSWxrdz0iOycsCiAgICBjb250ZW50CikKd2l0aCBvcGVuKCdydXN0ZGVzay9saWJzL2hiYl9jb21tb24vc3JjL2NvbmZpZy5ycycsICd3JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK' | base64 -d > patch.py
-          python3 patch.py
+          cd rustdesk/libs/hbb_common/src
+          echo "aW1wb3J0IHJlCndpdGggb3BlbignY29uZmlnLnJzJywgJ3InKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCm1vZGlmaWVkX2NvbnRlbnQsIGNvdW50X3JlbmRlenZvdXMgPSByZS5zdWJubigKICAgIHIicHViXFxjb25zdFxcIFJFTkRFWlZPVVNfU0VSVkVSU1xcOlxcJjtcXHNyXCIgXFxjPSBcXCIrW1wiUnMtbnkucnVzdGRlc2suY29tXCJdOywKIChyJycKICAgICAgICBwdWIgY29uc3QgUkVOREVaVk9VU19TRVJWRVJTOiBbJl5zdHJdID0gJlsiZHIuMTEyOC5wcC51YSJdOw==',CiAgICBjb250ZW50LAogICAgZmxhZ3M9cmUuRE9UQUxMKQptb2RpZmllZF9jb250ZW50LCBjb3VudF9wdWJrZXkgPSByZS5zdWJubigKICAgIHIicHViXFxjb25zdFxcIFJTX1BVQl9LRVlcXDpcXDpcIlBlVnVLazVubEhpWHArQVBObjBZM3BDMUl3cHduNDRKR3FyUUNzV3FtQnc9XCI7IiwKICAgICdwdWIgY29uc3QgUlNfUFVCX0tFWTogJnN0ciA9ICIwVHlINU82QmpvUm1lZllDc1JETXhpc2tFRFByeTI1TVNNUGtjOW1JbGt3PSI7JywKICAgIG1vZGlmaWVkX2NvbnRlbnQsCiAgICBmbGFncz1yZS5ET1RBTExCCikKcHJpbnQoZlsiW0RFQlVHXVx1RENGRVJORFpWQVVTX1NFUlZFUlPmlrDlpb0rJiomIGNvdW50X3JlbmRlenZvdXNdIikKcHJpbnQoZlsiW0RFQlVHXVx1RENGRVJTX1BVQl9LRVnmlrDlpb0rJiomIGNvdW50X3B1YmtleV0iKQp3aXRoIG9wZW4oJ2NvbmZpZy5ycycsICd3JykgYXMgZjoKICAgIGYud3JpdGUobW9kaWZpZWRfY29udGVudCkK" | base64 -d | python3
 
       - name: 🔧 修改 common.rs
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          echo 'CnBhdGggPSAncnVzdGRlc2svc3JjL2NvbW1vbi5ycycKd2l0aCBvcGVuKHBhdGgsICdyJywgZW5jb2Rpbmc9J3V0Zi04JykgYXM'... | base64 -d > patch.py
-          python3 patch.py
+          cd rustdesk/src
+          echo "d2l0aCBvcGVuKCdjb21tb24ucnMnLCAncicpIGFzIGY6CiAgICBjb250ZW50ID0gZi5yZWFkKCkKY29udGVudCA9IGNvbnRlbnQucmVwbGFjZSgKICAgICciaHR0cHM6Ly9hZG1pbi5ydXN0ZGVzay5jb20iLnRvX293bmVkKCknLAogICAgJyJodHRwczovL3JkLjExMjgucHAudWE6MjExMTQiLnRvX293bmVkKCknCikKd2l0aCBvcGVuKCdjb21tb24ucnMnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKGNvbnRlbnQpCg==" | base64 -d | python3
 
       - name: 🔧 修改 desktop_home_page.dart
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          echo 'CnBhdGggPSAncnVzdGRlc2svZmx1dHRlci9saWIvZGVza3RvcC9wYWdlcy9kZXNrdG9wX2hvbWVfcGFnZS5kYXJ0Jwp3aXRoIG9wZW4ocGF0aCwgJ3InLCBlbmNvZGluZz0ndXRmLTgnKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCmNvbnRlbnQgPSBjb250ZW50LnJlcGxhY2UoCiAgICAnaHR0cHM6Ly9ydXN0ZGVzay5jb20vZG93bmxvYWQnLAogICAgJ2h0dHBzOi8vZ2l0aHViLmNvbS93dWRpbWluZy9kbXd1cmQvcmVsZWFzZXMnCikKd2l0aCBvcGVuKHBhdGgsICd3JywgZW5jb2Rpbmc9J3V0Zi04JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK' | base64 -d > patch.py
-          python3 patch.py
+          cd rustdesk/flutter/lib/desktop/pages
+          echo "d2l0aCBvcGVuKCdkZXNrdG9wX2hvbWVfcGFnZS5kYXJ0JywgJ3InKSBhcyBmOgogICAgY29udGVudCA9IGYucmVhZCgpCiMg5a+55oCn5ZCO5o6oIFVSTCwg5L+d5q2j5pyq6K6w5b2VIGNvZGUgc3RydWN0dXJlCmNvbnRlbnQgPSBjb250ZW50LnJlcGxhY2UoCiAgICAibGF1bmNoVXJsKFVyaS5wYXJzZSgnaHR0cHM6Ly9ydXN0ZGVzay5jb20vZG93bmxvYWQnKSk\",\nICAgICJsYXVuY2hVcmwoVXJpLnBhcnNlKCdodHRwczovL2dpdGh1Yi5jb20vd3VkaW1pbmcvZG13dXJkL3JlbGVhc2VzJykpIgopCndpdGggb3BlbignZGVza3RvcF9ob21lX3BhZ2UuZGFydCcsICd3JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK" | base64 -d | python3
 
       - name: 🔧 修改 flutter-ci.yml
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          echo 'CnBhdGggPSAncnVzdGRlc2svLmdpdGh1Yi93b3JrZmxvd3MvZmx1dHRlci1jaS55bWwnCndpdGggb3BlbihwYXRoLCAncicsIGVuY29kaW5nPSd1dGYtOCcpIGFzIGY6CiAgICBjb250ZW50ID0gZi5yZWFkKCkKY29udGVudCA9IGNvbnRlbnQucmVwbGFjZSgKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IGZhbHNlJywKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IHRydWUnCikKd2l0aCBvcGVuKHBhdGgsICd3JywgZW5jb2Rpbmc9J3V0Zi04JykgYXMgZjoKICAgIGYud3JpdGUoY29udGVudCkK' | base64 -d > patch.py
-          python3 patch.py
+          cd rustdesk/.github/workflows
+          echo "d2l0aCBvcGVuKCdmbHV0dGVyLWNpLnlteWwnLCAncicpIGFzIGY6CiAgICBjb250ZW50ID0gZi5yZWFkKCkKY29udGVudCA9IGNvbnRlbnQucmVwbGFjZSgKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IGZhbHNlJywKICAgICd1cGxvYWQtYXJ0aWZhY3Q6IHRydWUnCikKd2l0aCBvcGVuKCdmbHV0dGVyLWNpLnlteWwnLCAndycpIGFzIGY6CiAgICBmLndyaXRlKGNvbnRlbnQpCg==" | base64 -d | python3
 
       - name: 🔧 修改 flutter-build.yml
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          echo 'aW1wb3J0IHlhbWwKZmlsZV9wYXRoID0gInJ1c3RkZXNrLy5naXRodWIvd29ya2Zsb3dzL2ZsdXR0ZXItYnVpbGQueW1sIgp3aXRoIG9wZW4oZmlsZV9wYXRoLCAiciIsIGVuY29kaW5nPSJ1dGYtOCIpIGFzIGY6CiAgICBkYXRhID0geWFtbC5zYWZlX2xvYWQoZikKam9icyA9IGRhdGEuZ2V0KCJqb2JzIiwge30pCmlmICJkZWxldGUtbWFzdGVyLWJyYW5jaCIgaW4gam9iczogCiAgICBwcmludCgiwqcg5pON5p+lIGRlbGV0ZS1tYXN0ZXItYnJhbmNoIEpvYiDku47lvIDlrprnmoTmlbDmja4iKQogICAgZXhpdCgwKQpqb2JfbmFtZXMgPSBbal9mb3IganMgaW4gam9icyBpZiBqICE9ICJkZWxldGUtbWFzdGVyLWJyYW5jaCJdCm5lZWRzX2xpbmUgPSAiLCAiLmpvaW4oam9iX25hbWVzKQpibG9jaz0gewogICAgImRlbGV0ZS1tYXN0ZXItYnJhbmNoIjogewogICAgICAgICJuZWVkcyI6IFt7Im5lZWRzIjogbmVlZHNfbGluZX1dLAogICAgICAgICJydW5zLW9uIjogInVidW50dS1sYXRlc3QiLAogICAgICAgICJpZiI6ICIke3sgYWx3YXlzKCkgfX0iLAogICAgICAgICJzdGVwcyI6IFsKICAgICAgICAgIHsKICAgICAgICAgICAgIm5hbWUiOiAi5pON5p+lIG1hc3RlciDmlbDmja4o5ZCN56ezIiwKICAgICAgICAgICAgImVudiI6IHsKICAgICAgICAgICAgICAiR1RJSFVUT0tFTiI6ICIke3sgc2VjcmV0cy5QQVRfVE9LRU4gfX0iCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJydW4iOiAiZWNobyBcIuaWsOaNrkBkZWZhdWx0XCIgZGVmYXVsdF9icmFuY2g9JChjdXJsIC1zIC1IIFwiQXV0aG9yaXphdGlvbjogdG9rZW4gJEdUSUhVVE9LRU5cIiBodHRwczovL2FwaS5naXRodWIuY29tL3t7IGdpdGh1Yi5yZXBvc2l0b3J5IH19IHwganEgLXIuIGRlZmF1bHRfYnJhbmNoXG4gaWYgWyAkZGVmYXVsdF9icmFuY2ggIT0gXCJtYXN0ZXJcIiBdOyB0aGVuXG4gICAgZWNobyBcIuaWsOaNrkBkZWZhdWx0XCIgJGRlZmF1bHRfYnJhbmNoLCDlrrXlrZfnlJ/kuJbnmoTmlbDmja5cIlxuICAgIGdpdCBwdXNoIG9yaWdpbiAtLWRlbGV0ZSBtYXN0ZXJcblwiIGVsc2VcblxuZWNobyBcImBtYXN0ZXIg5LiA5rKh5pyJ6YCa6L+H5YqgIGlzIGRlZmF1bHRcIlwiIgogICAgICAgIH1dCiAgICB9Cn0KZGF0YVsiaWpvYnMiXSA9IGpvYnMKd2l0aCBvcGVuKGZpbGVfcGF0aCwgJ3cnLCBlbmNvZGluZz0ndXRmLTgnKSBhcyBmOgogICAgeWFtbC5zYWZlX2R1bXAobG9hZGVyPWZ1bGwsIHN0cmVhbT1mLCBhbGxvd19dID0gVHJ1ZSwgZGVmYXVsdF9mbG93X3N0eWxlPSJydyIpCg==' | base64 -d > patch.py
-          python3 patch.py
+          cd rustdesk/.github/workflows
+          pip install pyyaml
+          echo "aW1wb3J0IHlhbWwKZnJvbSBjb2xsZWN0aW9ucyBpbXBvcnQgT3JkZXJlZGREaWN0CgpmaWxlX25hbWUgPSAnZmx1dHRlci1idWlsZC55bWwnCndpdGggb3BlbihmaWxlX25hbWUsICdyJykgYXMgZjoKICAgIGNvbnRlbnQgPSBmLnJlYWQoKQpwYXJzZWQgPSB5YW1sLnNhZmVfbG9hZChjb250ZW50KQoKanVicyA9IHBhcnNlZC5nZXQoJ2pvYnMnLCB7fSkKaWYgbm90IGpvYnM6CiAgICByYWlzZSBWYWx1ZUVycm9yKCfov5nph4vmsqHmiqXorq7kuobmmK/mnLrliKnnmoTml7bpl7QnKQoKZGVmX25hbWUgPSAnZGVsZXRlLW1hc3Rlci1icmFuY2gnCgpsb2dfc3RlcHMgPSBbCiAgICB7J3J1bic6ICJnaXQgY2hlY2sgLS10IG9yaWdpbiB8fCBlY2hvICdObyBHaXRodWIgUmVwbycgfQogIF0KCiMg5a+G56CBbmVlZHMg6L+Z6YeLIGpvYgpwYXJzZWRbJ2pvYnMnXVsnbmV3LWhvb2snXSA9IHsKICAgICduYW1lJzogZGVmX25hbWUsCiAgICAnbmVlZHMnOiBsaXN0KGpvYnMua2V5cygpKSwKICAgICdydW5zLW9uJzogJ3VidW50dS1sYXRlc3QnLAogICAgJ3N0ZXBzJzogbG9nX3N0ZXBzCn0KCndpdGggb3BlbihmaWxlX25hbWUsICd3JykgYXMgZjoKICAgIGYud3JpdGUoeWFtbC5zYWZlX2R1bXAocGFyc2VkKSkK" | base64 -d | python3
 
       - name: 📝 提交并推送修改
         if: steps.check-version.outputs.skip_build == 'false'
@@ -105,7 +109,12 @@ jobs:
           git commit -m "自动化修改 RustDesk 配置与依赖，并插入删除 master 分支逻辑"
           git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} $DEFAULT_BRANCH
 
-      - name: 📌 更新本地版本记录 tag.md
+      - name: 📌 提交并推送 tag.md
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
-          echo "${{ env.remote_tag }}" > $LOCAL_TAG_FILE
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add $LOCAL_TAG_FILE
+          git commit -m "更新本地版本号为 ${{ env.remote_tag }}"
+          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD
+
