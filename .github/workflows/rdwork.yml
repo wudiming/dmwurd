@@ -119,4 +119,62 @@ jobs:
           git commit -m "更新本地版本号为 ${{ env.remote_tag }}" || echo "ℹ️ 没有需要提交的更改"
           git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD
 
+      - name: ⏱️ 等待 3 分钟
+        if: steps.check-version.outputs.skip_build == 'false'
+        run: sleep 180
+
+      - name: 🕵️ 等待 flutter-build.yml 和 flutter-ci.yml 全部运行结束
+        if: steps.check-version.outputs.skip_build == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          sudo apt-get install -y gh
+          gh auth setup-git
+
+          repo="${{ github.repository }}"
+
+          wait_for_workflow() {
+            local wf_name="$1"
+            echo "🔍 等待 workflow: $wf_name"
+
+            local wf_id=$(gh api repos/$repo/actions/workflows | jq -r ".workflows[] | select(.path == \".github/workflows/$wf_name\") | .id")
+            if [ -z "$wf_id" ]; then
+              echo "❌ 找不到 workflow: $wf_name"
+              exit 1
+            fi
+
+            while true; do
+              local status=$(gh api repos/$repo/actions/workflows/$wf_id/runs?branch=master\&per_page=1 | jq -r '.workflow_runs[0].status')
+              echo "⏳ 当前状态: $wf_name = $status"
+              if [ "$status" == "completed" ]; then
+                echo "✅ $wf_name 已完成"
+                break
+              fi
+              echo "⏸️ $wf_name 仍在运行，等待 10 分钟后重试..."
+              sleep 600
+            done
+          }
+
+          wait_for_workflow "flutter-build.yml"
+          wait_for_workflow "flutter-ci.yml"
+
+          echo "✅ 所有 workflow 已完成，继续执行"
+
+      - name: 🔥 删除 master 分支
+        if: steps.check-version.outputs.skip_build == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          echo "🗑️ 准备删除 master 分支..."
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+          git ls-remote --exit-code --heads https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} master
+          if [ $? -eq 0 ]; then
+            git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} --delete master
+            echo "✅ 已删除 master 分支"
+          else
+            echo "ℹ️ master 分支不存在或已删除"
+          fi
 
