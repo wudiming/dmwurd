@@ -3,7 +3,7 @@ name: 构建 RustDesk-Pro
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # 每天 UTC 0 点运行（北京时间 8 点）
+    - cron: '0 0 * * 1'  # 每周一 UTC 0 点运行（北京时间 周一早上8点）
 
 jobs:
   modify-and-build:
