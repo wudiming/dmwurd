@@ -86,7 +86,7 @@ jobs:
         if: steps.check-version.outputs.skip_build == 'false'
         run: |
           cd rustdesk/.github/workflows
-          python3 ../../../../../python/reflutterb.py
+          python3 ../../../python/reflutterb.py
         env:
           remote_tag: ${{ env.remote_tag }}
 
