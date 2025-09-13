@@ -24,7 +24,7 @@ jobs:
           local_tag=$(cat $LOCAL_TAG_FILE || echo 'none')
           echo "🔖 本地版本: $local_tag"
           echo "local_tag=$local_tag" >> $GITHUB_ENV
-          latest_tag=$(curl -s https://api.github.com/repos/rustdesk/rustdesk/tags | jq -r '.[2].name')
+          latest_tag=$(curl -s https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
           echo "🌐 远程版本: $latest_tag"
           echo "remote_tag=$latest_tag" >> $GITHUB_ENV
 
