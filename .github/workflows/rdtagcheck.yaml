@@ -13,30 +13,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout 当前仓库
-        uses: actions/checkout@v4
-
       - name: 🔍 检查远程版本与自身版本
         id: check-version
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 使用内置的 GITHUB_TOKEN 即可
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # 获取 RustDesk 官方的最新 release tag
-          latest_upstream_tag=$(curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
+          latest_upstream_tag=$(curl -sL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
           if [[ -z "$latest_upstream_tag" || "$latest_upstream_tag" == "null" ]]; then
             echo "❌ 无法获取上游 rustdesk/rustdesk 的最新版本号，脚本终止"
             exit 1
           fi
-          echo " upstream/rustdesk 最新版本: $latest_upstream_tag"
+          echo " rustdesk/rustdesk 远程最新版本: $latest_upstream_tag"
 
           # 获取您自己仓库的最新 tag
-          # API 会返回一个列表，第一个就是最新的
-          latest_own_tag=$(curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/${{ github.repository }}/tags | jq -r '.[0].name')
+          latest_own_tag=$(curl -sL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/${{ github.repository }}/tags | jq -r '.[0].name')
           if [[ -z "$latest_own_tag" || "$latest_own_tag" == "null" ]]; then
             echo "ℹ️ 在 ${{ github.repository }} 中未找到任何 tag，视为需要构建"
             latest_own_tag="none"
           fi
-          echo " wudiming/dmwurd 当前最新版本: $latest_own_tag"
+          echo " wudiming/dmwurd 本地最新版本: $latest_own_tag"
 
           if [ "$latest_upstream_tag" == "$latest_own_tag" ]; then
             echo "✅ 版本一致 ($latest_upstream_tag)，无需构建"
@@ -50,7 +46,7 @@ jobs:
         if: steps.check-version.outputs.skip_build == 'false'
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.PAT_TOKEN }} # 触发 workflow 需要 PAT
+          github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
