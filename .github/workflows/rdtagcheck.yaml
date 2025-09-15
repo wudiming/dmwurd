@@ -53,6 +53,7 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'rdproaction.yaml', // 确保这个文件名与你的构建文件名一致
+              workflow_id: 'rdproaction.yaml', 
+              ref: 'main' 
             });
             console.log('✅ 已成功触发 rdproaction.yaml 工作流程');
