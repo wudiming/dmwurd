@@ -44,12 +44,11 @@ jobs:
           git clone $SUBMODULE_URL $SUBMODULE_PATH
           rm -rf libs/hbb_common/.git
 
-      - name: 🔧 修改配置文件 (config.rs, common.rs, flutter ymls)
+      - name: 🔧 修改配置文件 (config.rs, common.rs, flutter)
         run: |
           python3 python/reconfig.py rustdesk/libs/hbb_common/src/config.rs
           python3 python/recommon.py rustdesk/src/common.rs
-          python3 python/reflutterb.py rustdesk/.github/workflows/flutter-build.yml
-          python3 python/reflutterc.py rustdesk/.github/workflows/flutter-ci.yml
+          python3 python/refluttera.py rustdesk/.github/workflows/flutter-ci.yml
         env:
           remote_tag: ${{ env.remote_tag }}
 
