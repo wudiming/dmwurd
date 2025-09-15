@@ -59,7 +59,7 @@ jobs:
           DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
           git checkout $DEFAULT_BRANCH
           git add .
-          git commit -m "🤖 [Automated] Build RustDesk-Pro v${{ env.remote_tag }}"
+          git commit -m "Build RustDesk-Pro v${{ env.remote_tag }}"
           git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} $DEFAULT_BRANCH
 
       - name: ⏱️ 等待 3 分钟让 CI 开始
@@ -112,19 +112,4 @@ jobs:
             echo "✅ 已删除 master 分钟"
           else
             echo "ℹ️ master 分支不存在或已删除"
-          fi
-
-      - name: 📝📌 写入并提交新版本号
-        run: |
-          mkdir -p temp
-          echo "${{ env.remote_tag }}" > $LOCAL_TAG_FILE
-          echo "✅ 已将最新版本号 ${{ env.remote_tag }} 写入到 $LOCAL_TAG_FILE"
-          
-          git add $LOCAL_TAG_FILE
-          # git diff --staged --quiet || git commit -m "🔖 Chore: 更新本地版本号为 ${{ env.remote_tag }}"
-          if ! git diff --staged --quiet; then
-            git commit -m "🔖 Chore: 更新本地版本号为 ${{ env.remote_tag }}"
-            git push
-          else
-            echo "ℹ️ 版本文件无变化，无需提交。"
           fi
