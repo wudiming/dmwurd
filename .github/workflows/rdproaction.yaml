@@ -1,0 +1,130 @@
+# .github/workflows/rdproaction.yaml
+
+name: 构建 RustDesk-Pro
+
+on:
+  workflow_dispatch: # 允许被其他 workflow 触发或手动触发
+
+jobs:
+  build-rustdesk-pro:
+    runs-on: ubuntu-latest
+
+    env:
+      LOCAL_TAG_FILE: temp/tag.md
+
+    steps:
+      - name: Checkout 当前仓库
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }} # 使用 PAT 以便后续可以推送
+
+      - name: 获取远程最新版本号
+        id: get-tag
+        run: |
+          latest_tag=$(curl -s https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
+          echo "🌐 远程最新版本: $latest_tag"
+          echo "remote_tag=$latest_tag" >> $GITHUB_ENV
+
+      - name: 📦 设置 Git 用户信息
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+      - name: 📁 克隆 rustdesk 仓库及子模块
+        run: git clone --recurse-submodules https://github.com/rustdesk/rustdesk.git
+
+      - name: 🧹 移除并重新克隆 hbb_common 子模块
+        run: |
+          cd rustdesk
+          SUBMODULE_PATH=$(git config -f .gitmodules --get submodule.libs/hbb_common.path)
+          SUBMODULE_URL=$(git config -f .gitmodules --get submodule.libs/hbb_common.url)
+          git submodule deinit -f $SUBMODULE_PATH
+          git rm --cached $SUBMODULE_PATH
+          rm -rf $SUBMODULE_PATH
+          git clone $SUBMODULE_URL $SUBMODULE_PATH
+          rm -rf libs/hbb_common/.git
+
+      - name: 🔧 修改配置文件 (config.rs, common.rs, flutter ymls)
+        run: |
+          python3 python/reconfig.py rustdesk/libs/hbb_common/src/config.rs
+          python3 python/recommon.py rustdesk/src/common.rs
+          python3 python/reflutterb.py rustdesk/.github/workflows/flutter-build.yml
+          python3 python/reflutterc.py rustdesk/.github/workflows/flutter-ci.yml
+        env:
+          remote_tag: ${{ env.remote_tag }}
+
+      - name: 📝 提交并推送修改到当前仓库
+        run: |
+          cd rustdesk
+          DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
+          git checkout $DEFAULT_BRANCH
+          git add .
+          git commit -m "🤖 [Automated] Build RustDesk-Pro v${{ env.remote_tag }}"
+          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} $DEFAULT_BRANCH
+
+      - name: ⏱️ 等待 3 分钟让 CI 开始
+        run: sleep 180
+
+      - name: 🕵️ 等待 flutter-ci.yml 完成
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq gh
+          gh auth setup-git
+          
+          repo="${{ github.repository }}"
+          wf_path=".github/workflows/flutter-ci.yml"
+          
+          echo "🔍 查询 flutter-ci.yml 的 workflow id..."
+          wf_id=$(gh api repos/$repo/actions/workflows | jq -r ".workflows[] | select(.path == \"$wf_path\") | .id")
+          if [ -z "$wf_id" ]; then
+            echo "❌ 找不到 flutter-ci.yml 的 workflow"
+            exit 1
+          fi
+          
+          echo "⏳ 等待 flutter-ci.yml 执行完成..."
+          timeout 3600s bash -c '
+            while true; do
+              status=$(gh api "repos/'"$repo"'/actions/workflows/'"$wf_id"'/runs?branch=master&per_page=1" | jq -r ".workflow_runs[0].status")
+              conclusion=$(gh api "repos/'"$repo"'/actions/workflows/'"$wf_id"'/runs?branch=master&per_page=1" | jq -r ".workflow_runs[0].conclusion")
+              echo "🔄 当前状态: $status, 结果: $conclusion"
+              if [ "$status" == "completed" ]; then
+                if [ "$conclusion" == "success" ]; then
+                  echo "✅ flutter-ci.yml 执行成功"
+                  break
+                else
+                  echo "❌ flutter-ci.yml 执行失败 ($conclusion)"
+                  exit 1
+                fi
+              fi
+              echo "🕒 等待 5 分钟后重试..."
+              sleep 300
+            done
+          '
+
+      - name: 🔥 删除 master 分支
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          echo "🗑️ 准备删除 master 分支..."
+          if git ls-remote --exit-code --heads https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} master; then
+            git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} --delete master
+            echo "✅ 已删除 master 分钟"
+          else
+            echo "ℹ️ master 分支不存在或已删除"
+          fi
+
+      - name: 📝📌 写入并提交新版本号
+        run: |
+          mkdir -p temp
+          echo "${{ env.remote_tag }}" > $LOCAL_TAG_FILE
+          echo "✅ 已将最新版本号 ${{ env.remote_tag }} 写入到 $LOCAL_TAG_FILE"
+          
+          git add $LOCAL_TAG_FILE
+          # git diff --staged --quiet || git commit -m "🔖 Chore: 更新本地版本号为 ${{ env.remote_tag }}"
+          if ! git diff --staged --quiet; then
+            git commit -m "🔖 Chore: 更新本地版本号为 ${{ env.remote_tag }}"
+            git push
+          else
+            echo "ℹ️ 版本文件无变化，无需提交。"
+          fi
