@@ -12,48 +12,50 @@ jobs:
   check-and-trigger:
     runs-on: ubuntu-latest
 
-    env:
-      LOCAL_TAG_FILE: temp/tag.md
-
     steps:
       - name: Checkout 当前仓库
         uses: actions/checkout@v4
 
-      - name: 🔍 检查版本是否需要更新
+      - name: 🔍 检查远程版本与自身版本
         id: check-version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 使用内置的 GITHUB_TOKEN 即可
         run: |
-          mkdir -p temp
-          touch $LOCAL_TAG_FILE
-          local_tag=$(cat $LOCAL_TAG_FILE || echo 'none')
-          echo "🔖 本地版本: $local_tag"
-          
-          latest_tag=$(curl -s https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
-          echo "🌐 远程版本: $latest_tag"
-          
-          if [ -z "$latest_tag" ]; then
-            echo "❌ 无法获取远程版本号，脚本终止"
+          # 获取 RustDesk 官方的最新 release tag
+          latest_upstream_tag=$(curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
+          if [[ -z "$latest_upstream_tag" || "$latest_upstream_tag" == "null" ]]; then
+            echo "❌ 无法获取上游 rustdesk/rustdesk 的最新版本号，脚本终止"
             exit 1
           fi
+          echo " upstream/rustdesk 最新版本: $latest_upstream_tag"
 
-          if [ "$latest_tag" == "$local_tag" ]; then
-            echo "✅ 版本一致，无需构建"
+          # 获取您自己仓库的最新 tag
+          # API 会返回一个列表，第一个就是最新的
+          latest_own_tag=$(curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/${{ github.repository }}/tags | jq -r '.[0].name')
+          if [[ -z "$latest_own_tag" || "$latest_own_tag" == "null" ]]; then
+            echo "ℹ️ 在 ${{ github.repository }} 中未找到任何 tag，视为需要构建"
+            latest_own_tag="none"
+          fi
+          echo " wudiming/dmwurd 当前最新版本: $latest_own_tag"
+
+          if [ "$latest_upstream_tag" == "$latest_own_tag" ]; then
+            echo "✅ 版本一致 ($latest_upstream_tag)，无需构建"
             echo "skip_build=true" >> $GITHUB_OUTPUT
           else
-            echo "⚠️ 版本不一致，准备触发构建..."
+            echo "⚠️ 版本不一致 (上游: $latest_upstream_tag, 当前: $latest_own_tag)，准备触发构建..."
             echo "skip_build=false" >> $GITHUB_OUTPUT
-            echo "remote_tag=$latest_tag" >> $GITHUB_ENV
           fi
 
       - name: 🚀 触发 RustDesk-Pro 构建工作流程
         if: steps.check-version.outputs.skip_build == 'false'
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.PAT_TOKEN }}
+          github-token: ${{ secrets.PAT_TOKEN }} # 触发 workflow 需要 PAT
           script: |
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'rdproaction.yaml', 
-              ref: 'main' 
+              workflow_id: 'rdproaction.yaml',
+              ref: 'main'
             });
             console.log('✅ 已成功触发 rdproaction.yaml 工作流程');
