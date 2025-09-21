@@ -7,16 +7,13 @@ jobs:
   build-rustdesk-pro:
     runs-on: ubuntu-latest
 
-    # 统一设置 job 级别的环境变量
     env:
-      # 将 PAT_TOKEN 赋值给 GH_TOKEN，供所有步骤使用
       GH_TOKEN: ${{ secrets.PAT_TOKEN }}
 
     steps:
       - name: Checkout 当前仓库
         uses: actions/checkout@v4
         with:
-          # Checkout 步骤本身也需要 token 来进行后续的推送操作
           token: ${{ env.GH_TOKEN }}
 
       - name: 获取远程最新版本号
@@ -66,7 +63,6 @@ jobs:
           fi
           git add .
           git commit --allow-empty -m "Build RustDesk-Pro v${{ env.remote_tag }}"
-          # 注意：这里的 token 引用方式也相应修改
           git push https://x-access-token:${{ env.GH_TOKEN }}@github.com/${{ github.repository }} $TARGET_BRANCH
 
       - name: ⏱️ 等待 3 分钟让 CI 开始
@@ -74,7 +70,6 @@ jobs:
 
       - name: 🕵️ 等待 flutter-ci.yml 完成
         run: |
-          # 此处不再需要 env 块，gh 会自动使用 job 级别的 GH_TOKEN
           sudo apt-get update && sudo apt-get install -y jq gh
           gh auth setup-git
           
@@ -114,8 +109,6 @@ jobs:
       - name: 🚀 发布 Release
         run: |
           echo "🚀 正在将版本 ${{ env.remote_tag }} 从 pre-release 更新为正式 release..."
-          
-          # gh 会自动使用 job 级别的 GH_TOKEN
           gh release edit "${{ env.remote_tag }}" \
             --repo "${{ github.repository }}" \
             --prerelease=false
@@ -126,7 +119,6 @@ jobs:
         run: |
           echo "🗑️ 准备删除 master 分支..."
           if git ls-remote --exit-code --heads https://x-access-token:${{ env.GH_TOKEN }}@github.com/${{ github.repository }} master; then
-            # 此处 git push 也使用 job 级别的 GH_TOKEN
             git push https://x-access-token:${{ env.GH_TOKEN }}@github.com/${{ github.repository }} --delete master
             echo "✅ 已删除 master 分支"
           else
