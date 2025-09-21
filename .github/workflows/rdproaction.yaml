@@ -49,6 +49,8 @@ jobs:
           python3 python/reconfig.py rustdesk/libs/hbb_common/src/config.rs
           python3 python/recommon.py rustdesk/src/common.rs
           python3 python/refluttera.py rustdesk/.github/workflows/flutter-ci.yml
+          python3 python/redarta.py rustdesk/flutter/lib/mobile/pages/connection_page.dart
+          python3 python/redartb.py rustdesk/flutter/lib/desktop/pages/desktop_home_page.dart
         env:
           remote_tag: ${{ env.remote_tag }}
 
