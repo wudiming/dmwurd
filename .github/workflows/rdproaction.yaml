@@ -63,7 +63,7 @@ jobs:
           fi
           git add .
           git commit --allow-empty -m "Build RustDesk-Pro v${{ env.remote_tag }}"
-          git push https://x-access-token:${{ env.GH_TOKEN }}@github.com/${{ github.repository }} $TARGET_BRANCH
+          git push httpsgit push --force https://x-access-token:${{ env.GH_TOKEN }}@github.com/${{ github.repository }} $TARGET_BRANCH://x-access-token:${{ env.GH_TOKEN }}@github.com/${{ github.repository }} $TARGET_BRANCH
 
       - name: ⏱️ 等待 3 分钟让 CI 开始
         run: sleep 180
