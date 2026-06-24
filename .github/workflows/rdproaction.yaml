@@ -107,6 +107,7 @@ jobs:
           '
       
       - name: 🚀 发布 Release
+        if: always()
         run: |
           echo "🚀 正在将版本 ${{ env.remote_tag }} 从 pre-release 更新为正式 release..."
           gh release edit "${{ env.remote_tag }}" \
