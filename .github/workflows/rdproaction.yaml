@@ -116,6 +116,7 @@ jobs:
           echo "✅ 版本 ${{ env.remote_tag }} 已成功发布！"
 
       - name: 🔥 删除 master 分支
+        if: always()
         run: |
           echo "🗑️ 准备删除 master 分支..."
           if git ls-remote --exit-code --heads https://x-access-token:${{ env.GH_TOKEN }}@github.com/${{ github.repository }} master; then
