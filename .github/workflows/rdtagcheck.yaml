@@ -5,8 +5,8 @@ name: 检查 RustDesk 版本并触发构建
 on:
   workflow_dispatch: # 允许手动触发
   schedule:
-    # 在北京时间每天上午9:30运行
-    - cron: '30 1 * * *'
+    # 在北京时间每天上午4:30运行
+    - cron: '30 20 * * *'
 
 jobs:
   check-and-trigger:
