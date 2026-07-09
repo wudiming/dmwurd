@@ -113,6 +113,7 @@ jobs:
           gh release edit "${{ env.remote_tag }}" \
             --repo "${{ github.repository }}" \
             --prerelease=false
+            --latest
             
           echo "✅ 版本 ${{ env.remote_tag }} 已成功发布！"
 
