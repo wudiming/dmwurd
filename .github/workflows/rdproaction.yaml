@@ -112,7 +112,7 @@ jobs:
           echo "🚀 正在将版本 ${{ env.remote_tag }} 从 pre-release 更新为正式 release..."
           gh release edit "${{ env.remote_tag }}" \
             --repo "${{ github.repository }}" \
-            --prerelease=false
+            --prerelease=false \
             --latest
             
           echo "✅ 版本 ${{ env.remote_tag }} 已成功发布！"
