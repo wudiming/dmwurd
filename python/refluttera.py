@@ -21,6 +21,14 @@ try:
         print(f"❌ 错误: 在 '{file_path}' 中未找到 'upload-artifact' 配置。")
         sys.exit(1)
 
+    # 必须为可复用 workflow 添加 secrets: inherit，否则 flutter-build.yml 无法读取 RUSTDESK_UPDATE_ED25519_SEED
+    if 'secrets:' not in content:
+        uses_pattern = re.compile(r'([ \t]*)(uses:\s*\./\.github/workflows/flutter-build\.yml)')
+        content, count_secrets = uses_pattern.subn(rf'\1\2\n\1secrets: inherit', content, count=1)
+        if count_secrets == 0:
+            print(f"❌ 错误: 在 '{file_path}' 中未找到 'uses: ./.github/workflows/flutter-build.yml'，无法添加 'secrets: inherit'。")
+            sys.exit(1)
+
     content = content.replace('upload-artifact: false', 'upload-artifact: true')
 
     if 'upload-tag:' in content:
@@ -58,7 +66,7 @@ try:
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(content)
 
-    print(f"✅ 文件 '{file_path}' 中的 CI 工作流参数已成功更新 (upload-tag={tag}, publish-update-metadata=true)。")
+    print(f"✅ 文件 '{file_path}' 中的 CI 工作流参数已成功更新 (secrets=inherit, upload-tag={tag}, publish-update-metadata=true)。")
 
 except FileNotFoundError:
     print(f"❌ 错误：找不到文件 '{file_path}'")
