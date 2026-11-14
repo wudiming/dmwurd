@@ -19,7 +19,11 @@ jobs:
       - name: 获取远程最新版本号
         id: get-tag
         run: |
-          latest_tag=$(curl -s https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
+          latest_tag=$(curl -sL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/rustdesk/rustdesk/releases/latest | jq -r .tag_name)
+          if [[ -z "$latest_tag" || "$latest_tag" == "null" ]]; then
+            echo "❌ 无法获取上游 rustdesk/rustdesk 的最新版本号"
+            exit 1
+          fi
           echo "🌐 远程最新版本: $latest_tag"
           # 使用 GITHUB_ENV 将动态生成的变量传递给后续步骤
           echo "remote_tag=$latest_tag" >> $GITHUB_ENV
@@ -30,7 +34,7 @@ jobs:
           git config --global user.name "GitHub Action"
 
       - name: 📁 克隆 rustdesk 仓库及子模块
-        run: git clone --recurse-submodules https://github.com/rustdesk/rustdesk.git
+        run: git clone --branch "${{ env.remote_tag }}" --recurse-submodules https://github.com/rustdesk/rustdesk.git
 
       - name: 🧹 移除并重新克隆 hbb_common 子模块
         run: |
@@ -43,12 +47,21 @@ jobs:
           git clone $SUBMODULE_URL $SUBMODULE_PATH
           rm -rf libs/hbb_common/.git
 
-      - name: 🔧 修改配置文件 (config.rs, common.rs, flutter)
+      - name: 🔧 修改配置文件 (config.rs, common.rs, updater, flutter)
+        env:
+          TARGET_REPO: ${{ github.repository }}
+          RUSTDESK_UPDATE_ED25519_PUBLIC_KEY: ${{ vars.RUSTDESK_UPDATE_ED25519_PUBLIC_KEY }}
         run: |
-          # python 脚本会自动从环境中读取 remote_tag 变量
+          if [ -z "$RUSTDESK_UPDATE_ED25519_PUBLIC_KEY" ]; then
+            echo "❌ 请先在仓库 Settings -> Secrets and variables -> Actions -> Variables 中配置 RUSTDESK_UPDATE_ED25519_PUBLIC_KEY（并在 Secrets 中配置 RUSTDESK_UPDATE_ED25519_SEED）"
+            exit 1
+          fi
+          # python 脚本会自动从环境中读取 remote_tag、TARGET_REPO 和 RUSTDESK_UPDATE_ED25519_PUBLIC_KEY 变量
           python3 python/reconfig.py rustdesk/libs/hbb_common/src/config.rs
           python3 python/recommon.py rustdesk/src/common.rs
+          python3 python/reupdater.py rustdesk/src/updater/artifact.rs rustdesk/src/update_metadata.rs
           python3 python/refluttera.py rustdesk/.github/workflows/flutter-ci.yml
+          python3 python/reflutterbuild.py rustdesk/.github/workflows/flutter-build.yml
           python3 python/redarta.py rustdesk/flutter/lib/mobile/pages/connection_page.dart
           python3 python/redartb.py rustdesk/flutter/lib/desktop/pages/desktop_home_page.dart
 
@@ -107,7 +120,7 @@ jobs:
           '
       
       - name: 🚀 发布 Release
-        if: always()
+        if: success()
         run: |
           echo "🚀 正在将版本 ${{ env.remote_tag }} 从 pre-release 更新为正式 release..."
           gh release edit "${{ env.remote_tag }}" \

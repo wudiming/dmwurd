@@ -1,34 +1,32 @@
+import os
 import sys
 
-# 从命令行第一个参数获取文件路径
 file_path = sys.argv[1]
+target_repo = os.environ.get("TARGET_REPO", "wudiming/dmwurd").strip()
+if "/" not in target_repo:
+    print(f"❌ 错误：TARGET_REPO 格式无效: {target_repo}")
+    sys.exit(1)
 
-# 定义要查找和替换的内容
 old_line = "final Uri url = Uri.parse('https://rustdesk.com/download');"
-new_line = "final Uri url = Uri.parse('https://github.com/wudiming/dmwurd/releases/latest');"
+new_line = f"final Uri url = Uri.parse('https://github.com/{target_repo}/releases/latest');"
 
-try:
-    # --- 读取文件内容 ---
-    # 使用 with 语句可以确保文件被正确关闭
-    # 指定 utf-8 编码以避免乱码问题
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+old_changelog_prefix = "https://github.com/rustdesk/rustdesk/releases/tag/"
+new_changelog_prefix = f"https://github.com/{target_repo}/releases/tag/"
 
-    # --- 检查是否需要修改 ---
-    if old_line not in content:
-        print(f"🟡 在文件 '{file_path}' 中未找到目标链接，无需修改。")
-    else:
-        # --- 执行替换 ---
-        content = content.replace(old_line, new_line)
+with open(file_path, 'r', encoding='utf-8') as f:
+    content = f.read()
 
-        # --- 将修改后的内容写回文件 ---
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        
-        # --- 打印成功信息 ---
-        print(f"✅ 文件 '{file_path}' 中的下载链接已成功修改。")
+if old_line not in content:
+    print(f"❌ 错误：在文件 '{file_path}' 中未找到目标链接 '{old_line}'。")
+    sys.exit(1)
+content = content.replace(old_line, new_line)
 
-except FileNotFoundError:
-    print(f"❌ 错误：文件 '{file_path}' 未找到。")
-except Exception as e:
-    print(f"❌ 处理文件时发生未知错误: {e}")
+if old_changelog_prefix not in content:
+    print(f"❌ 错误：在文件 '{file_path}' 中未找到 Changelog 链接前缀 '{old_changelog_prefix}'。")
+    sys.exit(1)
+content = content.replace(old_changelog_prefix, new_changelog_prefix)
+
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print(f"✅ 文件 '{file_path}' 中的下载链接与 Changelog 链接已成功修改。")
